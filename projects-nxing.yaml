@@ -1,0 +1,17 @@
+projects:
+- name: Prometheus
+  data:
+  - name: Requests (Volume)
+    query: |
+      sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
+  - name: 5xx Errors (%)
+    query: |
+      sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app",status=~"5.."}[1d]))
+      /
+      sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
+  - name: 90th Percentile (ms)
+    query: |
+      histogram_quantile(0.90, sum by (le) (increase(nginx_ingress_controller_request_duration_seconds_bucket{ingress="app"}[24h])))
+  - name: 99th Percentile (ms)
+    query: |
+      histogram_quantile(0.99, sum by (le) (increase(nginx_ingress_controller_request_duration_seconds_bucket{ingress="app"}[24h])))

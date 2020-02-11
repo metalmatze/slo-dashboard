@@ -1,0 +1,17 @@
+projects:
+- name: Prometheus
+  data:
+  - name: Requests per Day
+    query: |
+      sum(increase(prometheus_http_requests_total[24h]))
+  - name: 90th Percentile (ms)
+    query: |
+      histogram_quantile(0.90, sum(increase(prometheus_http_request_duration_seconds_bucket[24h])) by (le))
+  - name: 99th Percentile (ms)
+    query: |
+      histogram_quantile(0.99, sum(increase(prometheus_http_request_duration_seconds_bucket[24h])) by (le))
+  - name: 5xx Errors (%)
+    query: |
+      sum(increase(prometheus_http_requests_total{code=~"5.."}[24h]))
+      /
+      sum(increase(prometheus_http_requests_total[24h]))
