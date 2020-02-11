@@ -33,3 +33,11 @@ _Needs to be implemented._
 
 If this mode is enabled we will, upon starting, run all queries for all projects against a Prometheus.
 The results are stored in-memory. By default we will query the last 28d.
+
+
+## Usage
+
+For now, you can simply `go get -u github.com/metalmatze/slo-dashboard` or `go build -v` once you have cloned the project.
+Once you have a binary, run `slo-dashboard` which by default is looking for `projects.yaml` and querying Prometheus on `localhost:9090`.
+Both parameters are tweakable with `--file` (`-f`) and `--prometheus.url` if you need to change them.
+  
