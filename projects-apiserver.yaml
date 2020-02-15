@@ -1,0 +1,19 @@
+prometheus_url: http://localhost:9090
+projects:
+  - name: Kuberentes APIServer
+    days: 7
+    data:
+      - title: Requests (Volume)
+        query: |
+          sum(increase(apiserver_request_total{job="apiserver"}[24h]))
+      - title: 5xx Errors (%)
+        query: |
+          sum(increase(apiserver_request_total{job="apiserver",code=~"5.."}[24h]))
+          /
+          sum(increase(apiserver_request_total{job="apiserver"}[24h]))
+      - title: 90th Percentile (ms)
+        query: |
+          histogram_quantile(0.90, sum by (le) (increase(apiserver_request_duration_seconds_bucket{job="apiserver",subresource!="log",verb!~"LIST|WATCH|WATCHLIST|PROXY|CONNECT"}[24h])))
+      - title: 99th Percentile (ms)
+        query: |
+          histogram_quantile(0.99, sum by (le) (increase(apiserver_request_duration_seconds_bucket{job="apiserver",subresource!="log",verb!~"LIST|WATCH|WATCHLIST|PROXY|CONNECT"}[24h])))
