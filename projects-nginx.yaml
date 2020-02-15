@@ -1,0 +1,19 @@
+prometheus_url: http://localhost:9090
+projects:
+  - name: App - Nginx Ingress
+    days: 3
+    data:
+      - title: Requests (Volume)
+        query: |
+          sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
+      - title: 5xx Errors (%)
+        query: |
+          sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app",status=~"5.."}[1d]))
+          /
+          sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
+      - title: 90th Percentile (ms)
+        query: |
+          histogram_quantile(0.90, sum by (le) (increase(nginx_ingress_controller_request_duration_seconds_bucket{ingress="app"}[24h])))
+      - title: 99th Percentile (ms)
+        query: |
+          histogram_quantile(0.99, sum by (le) (increase(nginx_ingress_controller_request_duration_seconds_bucket{ingress="app"}[24h])))
