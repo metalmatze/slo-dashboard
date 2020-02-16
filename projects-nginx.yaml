@@ -6,14 +6,27 @@ projects:
       - title: Requests (Volume)
         query: |
           sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
+      - title: Availablity
+        format: percentage
+        query: |-
+          1 - (
+          sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h])) -
+          sum(increase(nginx_ingress_controller_request_duration_seconds_bucket{ingress="app",le="0.25",status!~"5.."}[24h])) -
+          sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app",status=~"5.."}[24h]))
+          )
+          /
+          sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
       - title: 5xx Errors (%)
+        format: percentage
         query: |
           sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app",status=~"5.."}[1d]))
           /
           sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
       - title: 90th Percentile (ms)
+        format: seconds
         query: |
           histogram_quantile(0.90, sum by (le) (increase(nginx_ingress_controller_request_duration_seconds_bucket{ingress="app"}[24h])))
       - title: 99th Percentile (ms)
+        format: seconds
         query: |
           histogram_quantile(0.99, sum by (le) (increase(nginx_ingress_controller_request_duration_seconds_bucket{ingress="app"}[24h])))

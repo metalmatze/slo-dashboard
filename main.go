@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -22,8 +24,9 @@ type configuration struct {
 		Days          uint   `json:"days"`
 		PrometheusURL string `json:"prometheus_url"`
 		Data          []struct {
-			Title string `json:"title"`
-			Query string `json:"query"`
+			Title  string `json:"title"`
+			Format string `json:"format"`
+			Query  string `json:"query"`
 		} `json:"data"`
 	} `json:"projects"`
 }
@@ -36,9 +39,18 @@ type Project struct {
 }
 
 type Column struct {
-	Title string
-	Data  []float64
+	Title  string
+	Format format
+	Data   []float64
 }
+
+type format string
+
+const (
+	seconds       format = "seconds"
+	percentage    format = "percentage"
+	percentage100 format = "percentage100"
+)
 
 func main() {
 	app := cli.NewApp()
@@ -133,7 +145,7 @@ func volatile(c *cli.Context) error {
 		return fmt.Errorf("failed querying: %w", err)
 	}
 
-	return nil
+	return serve(projects)
 }
 
 func query(config configuration) ([]Project, error) {
@@ -142,9 +154,9 @@ func query(config configuration) ([]Project, error) {
 	for _, cp := range config.Projects {
 		var prometheusURL string
 		if cp.PrometheusURL != "" {
-			prometheusURL = cp.PrometheusURL
+			prometheusURL = cp.PrometheusURL // use project's Prometheus URL
 		} else if config.PrometheusURL != "" {
-			prometheusURL = config.PrometheusURL
+			prometheusURL = config.PrometheusURL // use global Prometheus URL
 		} else {
 			return nil, fmt.Errorf("no Prometheus URL found")
 		}
@@ -169,6 +181,15 @@ func query(config configuration) ([]Project, error) {
 			c := Column{Title: d.Title}
 			fmt.Println(c.Title)
 
+			switch d.Format {
+			case string(seconds):
+				c.Format = seconds
+			case string(percentage):
+				c.Format = percentage
+			case string(percentage100):
+				c.Format = percentage100
+			}
+
 			for i := 0; i < int(cp.Days); i++ {
 				day := midnight.AddDate(0, 0, -i)
 				fmt.Printf("\t%s\n", day.Format("2006-01-02"))
@@ -190,4 +211,46 @@ func query(config configuration) ([]Project, error) {
 		projects = append(projects, project)
 	}
 	return projects, nil
+}
+
+func serve(projects []Project) error {
+	funcs := map[string]interface{}{
+		"datefmt": func(t time.Time) string {
+			return t.Format("2006-01-02")
+		},
+		"format": func(format format, v float64) string {
+			switch format {
+			case seconds:
+				s := v * float64(time.Second)
+				return time.Duration(s).String()
+			case percentage:
+				return fmt.Sprintf("%f%%", v*100)
+			}
+
+			return fmt.Sprintf("%.f", v)
+		},
+	}
+
+	tmpl, err := template.New("index.html").Funcs(funcs).ParseFiles("./html/index.html")
+	if err != nil {
+		return err
+	}
+
+	data := struct {
+		Projects []Project
+	}{Projects: projects}
+
+	m := &http.ServeMux{}
+	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		err := tmpl.Execute(w, data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	})
+
+	s := http.Server{Addr: ":8080", Handler: m}
+
+	fmt.Println("Running HTTP server on address", s.Addr)
+	return s.ListenAndServe()
 }
