@@ -1,6 +1,6 @@
 prometheus_url: http://localhost:9090
 projects:
-  - name: Kuberentes APIServer
+  - name: Kubernetes APIServer
     days: 7
     data:
       - title: Requests (Volume)
