@@ -7,6 +7,9 @@ This SLO-dashboard is a simple website that shows you, by default on a per day b
 It can be used as a VALET (Volume, Availability, Latency, Errors, Tickets) dashboard,
 however, the exact metrics you query and store are up to you.
 
+![SLO Dashboard for the Kubernetes APIServer](docs/screenshots/apiserver.png)
+_Example dashboard configured with a 99% availablity on errors._
+
 ## Workflow
 
 This SLO-dashboard can show multiple projects (applications).
