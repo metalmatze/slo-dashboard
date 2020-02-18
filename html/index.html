@@ -24,11 +24,26 @@
             </tr>
             </thead>
             <tbody>
+            <tr>
+                <td class="uk-text-bold">SLOs</td>
+                {{ range .Columns }}
+                    {{ if ne .SLO.Value 0.0 }}
+                        <td class="uk-text-bold">{{ .SLO.Value | format .Format }}</td>
+                    {{ else }}
+                        <td></td>
+                    {{ end }}
+                {{ end }}
+            </tr>
             {{ range $i, $date := .Dates }}
                 <tr>
                     <td>{{ $date | datefmt }}</td>
                     {{ range $p.Columns }}
-                        <td>{{ index .Data $i | format .Format }}</td>
+                        {{ $value := index .Data $i }}
+                        {{ if breach .SLO $value }}
+                            <td class="uk-alert-danger">{{ $value | format .Format }}</td>
+                        {{ else }}
+                            <td>{{ $value | format .Format }}</td>
+                        {{ end }}
                     {{ end }}
                 </tr>
             {{ end }}

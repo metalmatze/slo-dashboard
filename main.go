@@ -24,7 +24,11 @@ type configuration struct {
 		Days          uint   `json:"days"`
 		PrometheusURL string `json:"prometheus_url"`
 		Data          []struct {
-			Title  string `json:"title"`
+			Title string `json:"title"`
+			SLO   struct {
+				Value      float64 `json:"value"`
+				Comparison string  `json:"comparison"`
+			} `json:"slo"`
 			Format string `json:"format"`
 			Query  string `json:"query"`
 		} `json:"data"`
@@ -40,8 +44,13 @@ type Project struct {
 
 type Column struct {
 	Title  string
+	SLO    SLO
 	Format format
 	Data   []float64
+}
+type SLO struct {
+	Value      float64
+	Comparison string
 }
 
 type format string
@@ -178,7 +187,11 @@ func query(config configuration) ([]Project, error) {
 		}
 
 		for _, d := range cp.Data {
-			c := Column{Title: d.Title}
+			c := Column{Title: d.Title, SLO: SLO{
+				Value:      d.SLO.Value,
+				Comparison: d.SLO.Comparison,
+			}}
+
 			fmt.Println(c.Title)
 
 			switch d.Format {
@@ -221,13 +234,48 @@ func serve(projects []Project) error {
 		"format": func(format format, v float64) string {
 			switch format {
 			case seconds:
-				s := v * float64(time.Second)
-				return time.Duration(s).String()
+				d := time.Duration(v * float64(time.Second))
+
+				if d.Hours() >= 1 {
+					return fmt.Sprintf("%.fh", d.Hours())
+				}
+				if d.Minutes() >= 1 {
+					return fmt.Sprintf("%.fm", d.Minutes())
+				}
+				if d.Seconds() >= 1 {
+					return fmt.Sprintf("%.fs", d.Seconds())
+				}
+				if d.Milliseconds() >= 1 {
+					return fmt.Sprintf("%dms", d.Milliseconds())
+				}
+				if d.Microseconds() >= 1 {
+					return fmt.Sprintf("%dµs", d.Microseconds())
+				}
+				if d.Nanoseconds() >= 1 {
+					return fmt.Sprintf("%dns", d.Nanoseconds())
+				}
+				return "0s"
 			case percentage:
-				return fmt.Sprintf("%f%%", v*100)
+				return fmt.Sprintf("%.2f%%", v*100)
 			}
 
 			return fmt.Sprintf("%.f", v)
+		},
+		"breach": func(slo SLO, value float64) bool {
+			if slo.Value == 0 { // No SLO
+				return false
+			}
+
+			// We negate as we look for breaches of SLO here
+			// This could be simplified but left like this for readability
+			switch slo.Comparison {
+			case "higher":
+				return !(value > slo.Value)
+			case "lower":
+				return !(value < slo.Value)
+			}
+
+			return false
 		},
 	}
 

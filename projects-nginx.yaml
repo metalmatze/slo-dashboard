@@ -1,12 +1,15 @@
 prometheus_url: http://localhost:9090
 projects:
   - name: App - Nginx Ingress
-    days: 3
+    days: 7
     data:
       - title: Requests (Volume)
         query: |
           sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
       - title: Availablity
+        slo:
+          value: 0.99
+          comparison: higher
         format: percentage
         query: |-
           1 - (
@@ -17,16 +20,25 @@ projects:
           /
           sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
       - title: 5xx Errors (%)
+        slo:
+          value: 0.01
+          comparison: lower
         format: percentage
         query: |
           sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app",status=~"5.."}[1d]))
           /
           sum(increase(nginx_ingress_controller_request_duration_seconds_count{ingress="app"}[24h]))
       - title: 90th Percentile (ms)
+        slo:
+          value: 0.150
+          comparison: lower
         format: seconds
         query: |
           histogram_quantile(0.90, sum by (le) (increase(nginx_ingress_controller_request_duration_seconds_bucket{ingress="app"}[24h])))
       - title: 99th Percentile (ms)
+        slo:
+          value: 0.250
+          comparison: lower
         format: seconds
         query: |
           histogram_quantile(0.99, sum by (le) (increase(nginx_ingress_controller_request_duration_seconds_bucket{ingress="app"}[24h])))
