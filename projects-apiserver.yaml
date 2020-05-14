@@ -1,31 +1,102 @@
-prometheus_url: http://localhost:9090
-projects:
+prometheus_url: http://localhost:9090/prometheus
+applications:
   - name: Kubernetes APIServer
-    days: 7
-    data:
-      - title: Requests (Volume)
-        query: |
-          sum(increase(apiserver_request_total{job="apiserver"}[24h]))
-      - title: 5xx Errors (%)
-        slo:
-          value: 0.0001
-          comparison: lower
-        format: percentage
-        query: |
-          sum(increase(apiserver_request_total{job="apiserver",code=~"5.."}[24h]))
-          /
-          sum(increase(apiserver_request_total{job="apiserver"}[24h]))
-      - title: 90th Percentile (ms)
-        slo:
-          value: 0.050
-          comparison: lower
-        format: seconds
-        query: |
-          histogram_quantile(0.90, sum by (le) (increase(apiserver_request_duration_seconds_bucket{job="apiserver",subresource!="log",verb!~"LIST|WATCH|WATCHLIST|PROXY|CONNECT"}[24h])))
-      - title: 99th Percentile (ms)
-        slo:
-          value: 0.055
-          comparison: lower
-        format: seconds
-        query: |
-          histogram_quantile(0.99, sum by (le) (increase(apiserver_request_duration_seconds_bucket{job="apiserver",subresource!="log",verb!~"LIST|WATCH|WATCHLIST|PROXY|CONNECT"}[24h])))
+    description: k8s api
+    components:
+      - name: APIServer Requests
+        status:
+          degraded:
+            query: up{job="apiserver"} != 1
+          outage:
+            query: up{job="apiserver"} != 0
+
+
+#prometheus_url: http://localhost:9090/prometheus/
+#projects:
+#  - name: Kubernetes APIServer
+#    days: 7
+#
+#    objective:
+#      target: 0.999
+#      query: |-
+#        1 - (
+#          sum(increase(apiserver_request_total{code=~"5.."}[$interval]))
+#        )
+#        /
+#        sum(increase(apiserver_request_total[$interval]))
+#
+#    data:
+#      - title: Requests (Volume)
+#        query: |
+#          sum(increase(apiserver_request_total{job="apiserver"}[24h]))
+#      - title: 5xx Errors (%)
+#        slo:
+#          value: 0.0001
+#          comparison: lower
+#        format: percentage
+#        query: |
+#          sum(increase(apiserver_request_total{job="apiserver",code=~"5.."}[24h]))
+#          /
+#          sum(increase(apiserver_request_total{job="apiserver"}[24h]))
+#      - title: 90th Percentile (ms)
+#        slo:
+#          value: 0.050
+#          comparison: lower
+#        format: seconds
+#        query: |
+#          histogram_quantile(0.90, sum by (le) (increase(apiserver_request_duration_seconds_bucket{job="apiserver",subresource!="log",verb!~"LIST|WATCH|WATCHLIST|PROXY|CONNECT"}[24h])))
+#      - title: 99th Percentile (ms)
+#        slo:
+#          value: 0.055
+#          comparison: lower
+#        format: seconds
+#        query: |
+#          histogram_quantile(0.99, sum by (le) (increase(apiserver_request_duration_seconds_bucket{job="apiserver",subresource!="log",verb!~"LIST|WATCH|WATCHLIST|PROXY|CONNECT"}[24h])))
+#
+#
+####
+## Overall Availability
+####
+#
+##1-
+##(
+##  sum(increase(apiserver_request_total{code=~"5.."}[1d])) # all errors
+##)
+##/
+##sum(increase(apiserver_request_total[1d]))
+#
+####
+## Write
+####
+#
+## SLO: Mutating API calls (Number of calls breaching SLO per day)
+## sum(increase(apiserver_request_duration_seconds_count{verb=~"POST|PUT|PATCH|DELETE"}[1d])) -
+## sum(increase(apiserver_request_duration_seconds_bucket{verb=~"POST|PUT|PATCH|DELETE",le="1"}[1d])) > 0
+#
+## SLI: Mutating API calls
+## histogram_quantile(0.99, sum by (le, resource, verb) (rate(apiserver_request_duration_seconds_bucket{verb=~"POST|PUT|PATCH|DELETE"}[5m]))) > 0
+#
+####
+## Read
+####
+#
+## SLO: Non-streaming read-only API calls
+## (
+##   sum(increase(apiserver_request_duration_seconds_bucket{verb=~"LIST|GET",scope="resource",le="1"}[1d])) +
+##   sum(increase(apiserver_request_duration_seconds_bucket{verb=~"LIST|GET",scope="namespace",le="5"}[1d])) +
+##   sum(increase(apiserver_request_duration_seconds_bucket{verb=~"LIST|GET",scope="cluster",le="20"}[1d]))
+## )
+## /
+## sum(increase(apiserver_request_duration_seconds_count{verb=~"LIST|GET"}[1d]))
+#
+## SLI: Non-streaming read-only API calls
+## histogram_quantile(0.99, sum by (le, scope, resource) (rate(apiserver_request_duration_seconds_bucket{verb=~"LIST|GET"}[5m]))) > 0
+#
+## SLO: Improved latency
+## 100 * (
+##   sum(increase(apiserver_request_duration_seconds_bucket{verb=~"LIST|GET",scope="resource",le="0.1"}[1d])) +
+##   sum(increase(apiserver_request_duration_seconds_bucket{verb=~"LIST|GET",scope="namespace",le="0.5"}[1d])) +
+##   sum(increase(apiserver_request_duration_seconds_bucket{verb=~"LIST|GET",scope="cluster",le="5"}[1d]))
+## )
+## /
+## sum(increase(apiserver_request_duration_seconds_count{verb=~"LIST|GET"}[1d]))
