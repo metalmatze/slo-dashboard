@@ -1,1 +1,7 @@
 /slo-dashboard
+
+/ui/**/node_modules
+/ui/dist
+/ui/stats.json
+/ui/coverage
+/ui/storybook-static
